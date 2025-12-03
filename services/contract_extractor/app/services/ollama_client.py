@@ -75,7 +75,8 @@ class OllamaClient:
             except httpx.ConnectError as exc:
                 raise OllamaServiceError(
                     "Unable to connect to the Ollama service at "
-                    f"{self.base_url}. Ensure the service is running at http://ollama_ext:11434."
+                    # f"{self.base_url}. Ensure the service is running at http://ollama_ext:11434."
+                    f"{self.base_url}. Ensure the service is running at http://192.168.3.63:11434."
                 ) from exc
             except HTTPStatusError as exc:
                 if exc.response.status_code != 404:
@@ -108,7 +109,8 @@ class OllamaClient:
                 raise OllamaServiceError(
                     "Unable to connect to the Ollama service at "
                     f"{self.base_url} when using the fallback API. Ensure the service "
-                    "is running at http://ollama_ext:11434."
+                    # "is running at http://ollama_ext:11434."
+                    "is running at http://192.168.3.63:11434."
                 ) from exc
             except HTTPStatusError as exc:
                 raise OllamaServiceError(
@@ -134,7 +136,8 @@ class OllamaClient:
                 raise OllamaServiceError(
                     "Unable to connect to the Ollama service at "
                     f"{self.base_url} when requesting the model list. Ensure the service "
-                    "is running at http://ollama_ext:11434."
+                    # "is running at http://ollama_ext:11434."
+                    "is running at http://192.168.3.63:11434."
                 ) from exc
             except HTTPStatusError as exc:
                 raise OllamaServiceError(

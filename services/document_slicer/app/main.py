@@ -59,7 +59,7 @@ async def broadcast(event: str, timestamp: float):
         await q.put(data)
 
 
-AI_ECONOM_SERVICE_URL = os.getenv("AI_ECONOM_SERVICE_URL", "http://ai_econom:10000/analyze")
+AI_ECONOM_SERVICE_URL = os.getenv("AI_ECONOM_SERVICE_URL", "http://ai_econom:8000/analyze")
 AI_LEGAL_SERVICE_URL = os.getenv("AI_LEGAL_SERVICE_URL", "http://ai_legal:8000/api/sections/full")
 CONTRACT_EXTRACTOR_URL = os.getenv(
     "CONTRACT_EXTRACTOR_URL", "http://contract_extractor:8085/qa/docx?plan=default"
@@ -69,9 +69,6 @@ HTTP_TIMEOUT = float(os.getenv("SERVICE_HTTP_TIMEOUT", "120"))
 DATA_VOLUME_PATH = Path(os.getenv("DATA_VOLUME_PATH", "/data"))
 SECTIONS_FILE_NAME = os.getenv("SECTIONS_FILE_NAME", "sections.json")
 PART_16_FILE_NAME = os.getenv("PART_16_FILE_NAME", "part_16.json")
-BUDGET_FILE_PATH = Path(
-    os.getenv("BUDGET_FILE_PATH", str(DATA_VOLUME_PATH / "budget.json"))
-)
 PART_16_FILE_PATH = Path(
     os.getenv("PART_16_FILE_PATH", str(DATA_VOLUME_PATH / "part_16.json"))
 )
@@ -175,20 +172,11 @@ async def _call_ai_econom_service(
         "error": None,
     }
 
-    if not BUDGET_FILE_PATH.exists():
-        result["error"] = f"Budget file not found at {BUDGET_FILE_PATH}"
-        return result
-
     if not PART_16_FILE_PATH.exists():
         result["error"] = f"Budget file not found at {PART_16_FILE_PATH}"
         return result
 
     files = {
-        # "budget_file": (
-        #     BUDGET_FILE_PATH.name,
-        #     BUDGET_FILE_PATH.open("rb"),
-        #     "application/json",
-        # ),
         "spec_file": (
             PART_16_FILE_PATH.name,
             PART_16_FILE_PATH.open("rb"),

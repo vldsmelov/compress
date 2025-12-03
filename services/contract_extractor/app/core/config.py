@@ -8,7 +8,8 @@ class AppConfig(BaseModel):
     version: str = "0.1.0"
     env: str = os.getenv("ENV", "dev")
     # Ollama всегда доступна как внешний сервис по фиксированному адресу.
-    ollama_host: str = os.getenv("OLLAMA_HOST", "http://ollama_ext:11434")
+    # ollama_host: str = os.getenv("OLLAMA_HOST", "http://ollama_ext:11434")
+    ollama_host: str = os.getenv("OLLAMA_HOST", "http://192.168.3.63:11434")
     model_name: str = os.getenv("MODEL", "qwen3:14b")
     temperature: float = float(os.getenv("TEMPERATURE", "0.1"))
     max_tokens: int = int(os.getenv("MAX_TOKENS", "1024"))

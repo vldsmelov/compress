@@ -10,7 +10,8 @@ from pathlib import Path
 app = FastAPI(title="Purchase Analysis API")
 
 # Конфигурация
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "ollama_ext")
+# OLLAMA_HOST = os.getenv("OLLAMA_HOST", "ollama_ext")
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "192.168.3.63")
 OLLAMA_PORT = os.getenv("OLLAMA_PORT", "11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:14b")
 
