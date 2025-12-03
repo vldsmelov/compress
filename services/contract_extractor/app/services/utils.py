@@ -1,7 +1,7 @@
-from io import BytesIO
 from fastapi import UploadFile
 import json
 import re
+from io import BytesIO
 
 from docx import Document
 from docx.document import Document as _Document
