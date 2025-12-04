@@ -85,6 +85,13 @@ def _load_qa_plan(plan_name: str) -> List[Dict[str, Any]]:
     return _normalize_queries(plan_payload)
 
 
+def _collect_plan_parts(queries: List[Dict[str, Any]]) -> set[str]:
+    parts: set[str] = set()
+    for query in queries:
+        parts.update(query.get("parts", []))
+    return parts
+
+
 async def _run_queries(sections_map: Dict[str, str], queries: List[Dict[str, Any]]):
     qa_service = ensure_qa_service()
     aggregated: Dict[str, Any] = {}
@@ -108,9 +115,29 @@ async def _run_queries(sections_map: Dict[str, str], queries: List[Dict[str, Any
     return {"ok": True, "result": aggregated, "responses": responses}
 
 
+def _build_empty_result(queries: List[Dict[str, Any]]) -> Dict[str, Any]:
+    aggregated: Dict[str, Any] = {}
+    responses: List[Dict[str, Any]] = []
+
+    for query in queries:
+        skeleton = {key: "" for key in query.get("answer", [])}
+        aggregated.update(skeleton)
+        responses.append(
+            {
+                "question": query.get("question", ""),
+                "parts": query.get("parts", []),
+                "result": skeleton,
+                "note": "LLM unavailable, returned empty placeholders",
+            }
+        )
+
+    return {"ok": False, "result": aggregated, "responses": responses}
+
+
 async def _attach_sb_check(payload: Dict[str, Any]) -> Dict[str, Any]:
     sb_payload = {
         "status": 0,
+        "status_reason": "seller not provided",
         "company_name": "",
         "globas_score": None,
         "good_count": 0,
@@ -125,6 +152,8 @@ async def _attach_sb_check(payload: Dict[str, Any]) -> Dict[str, Any]:
         seller_name = None
 
     if seller_name and isinstance(seller_name, str) and seller_name.strip():
+        sb_payload["company_name"] = seller_name
+        sb_payload["status_reason"] = "seller not found"
         try:
             from ..app.services.sb_check_service import get_sb_check_service
 
@@ -133,6 +162,7 @@ async def _attach_sb_check(payload: Dict[str, Any]) -> Dict[str, Any]:
 
             sb_payload = {
                 "status": 1,
+                "status_reason": "seller matched",
                 "company_name": sb_result.company_name,
                 "globas_score": sb_result.globas_score,
                 "good_count": sb_result.good_count,
@@ -142,6 +172,7 @@ async def _attach_sb_check(payload: Dict[str, Any]) -> Dict[str, Any]:
 
         except ValueError:
             logging.warning("SB Check: company '%s' not found", seller_name)
+            sb_payload["status"] = -1
         except Exception as exc:  # pragma: no cover - defensive guard
             logging.exception("SB Check analysis failed: %s", exc)
 
@@ -171,19 +202,29 @@ def _normalize_sections_map(sections: Dict[str, Any]) -> Dict[str, str]:
 
 
 async def qa_sections(sections: Dict[str, Any], plan: str):
-    ensure_qa_service()
-
     normalized_sections = _normalize_sections_map(sections)
     queries = _load_qa_plan(plan)
+    plan_parts = _collect_plan_parts(queries)
+    filtered_sections = {k: v for k, v in normalized_sections.items() if k in plan_parts}
 
-    try:
-        qa_result = await _run_queries(normalized_sections, queries)
-    except OllamaServiceError as exc:
-        logging.exception("Ollama service error during QA plan execution")
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except Exception as exc:  # pragma: no cover
-        logging.exception("Unhandled error during QA plan execution")
-        raise HTTPException(status_code=500, detail="Internal processing error") from exc
+    if not filtered_sections:
+        raise HTTPException(status_code=400, detail="No contract sections match the QA plan")
+
+    qa_service = get_qa_service()
+
+    if qa_service is None:
+        qa_result = _build_empty_result(queries)
+    else:
+        try:
+            qa_result = await _run_queries(filtered_sections, queries)
+        except OllamaServiceError as exc:
+            logging.exception("Ollama service error during QA plan execution")
+            qa_result = _build_empty_result(queries)
+            qa_result["error"] = str(exc)
+        except Exception as exc:  # pragma: no cover
+            logging.exception("Unhandled error during QA plan execution")
+            qa_result = _build_empty_result(queries)
+            qa_result["error"] = "Internal processing error"
 
     await _attach_sb_check(qa_result)
     return qa_result
