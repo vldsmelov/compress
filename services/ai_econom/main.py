@@ -15,6 +15,18 @@ OLLAMA_HOST = os.getenv("OLLAMA_HOST", "ollama")
 OLLAMA_PORT = os.getenv("OLLAMA_PORT", "11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:14b")
 
+raw_num_ctx = os.getenv("NUM_CTX") or os.getenv("OLLAMA_NUM_CTX")
+NUM_CTX = None
+if raw_num_ctx:
+    try:
+        parsed_num_ctx = int(raw_num_ctx)
+        NUM_CTX = parsed_num_ctx if parsed_num_ctx > 0 else None
+    except ValueError:
+        NUM_CTX = None
+
+if NUM_CTX is None and OLLAMA_MODEL.startswith("qwen3:17b"):
+    NUM_CTX = 65_536
+
 # Путь к папке data
 THIS_FILE = Path(__file__).resolve()
 AI_ECONOM_DIR = THIS_FILE.parents[0]
@@ -28,6 +40,7 @@ LLM_CONFIG = {
     "temperature": 0.1,
     "max_tokens": 2000,
     "timeout": 60,
+    "num_ctx": NUM_CTX,
 }
 
 def clean_number_string(number_str: str) -> float:
@@ -163,14 +176,19 @@ def get_categories_for_items(item_names: List[str], available_categories: List[s
     """
 
     try:
+        options = {
+            "temperature": LLM_CONFIG["temperature"],
+            "num_predict": LLM_CONFIG["max_tokens"],
+        }
+
+        if LLM_CONFIG["num_ctx"]:
+            options["num_ctx"] = LLM_CONFIG["num_ctx"]
+
         payload = {
             "model": LLM_CONFIG["model"],
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
-            "options": {
-                "temperature": LLM_CONFIG["temperature"],
-                "num_predict": LLM_CONFIG["max_tokens"],
-            },
+            "options": options,
         }
 
         response = requests.post(

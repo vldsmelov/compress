@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Iterable
 
 import httpx
@@ -17,13 +18,32 @@ class OllamaClient:
         self.base_url = (base_url or cfg.ollama_base_url).rstrip("/")
         self.model = model or cfg.ollama_model
         self.timeout = timeout or cfg.ollama_timeout
+        num_ctx = cfg.ollama_num_ctx
+
+        env_num_ctx = os.getenv("NUM_CTX")
+        if env_num_ctx:
+            try:
+                parsed_num_ctx = int(env_num_ctx)
+                num_ctx = parsed_num_ctx if parsed_num_ctx > 0 else num_ctx
+            except ValueError:
+                pass
+
+        if num_ctx is None and self.model.startswith("qwen3:17b"):
+            num_ctx = 65_536
+
+        self.num_ctx = num_ctx
 
     async def chat(self, messages: Iterable[dict[str, str]], *, model: str | None = None) -> dict[str, Any]:
+        options = {"temperature": 0, "seed": 123}
+
+        if self.num_ctx:
+            options["num_ctx"] = self.num_ctx
+
         payload = {
             "model": model or self.model,
             "messages": list(messages),
             "stream": False,
-            "options": {"temperature": 0, "seed": 123},
+            "options": options,
         }
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(f"{self.base_url}/api/chat", json=payload)

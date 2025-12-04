@@ -24,6 +24,11 @@ class Settings(BaseSettings):
         description="Таймаут запросов к Ollama в секундах",
         alias="OLLAMA_TIMEOUT",
     )
+    ollama_num_ctx: int | None = Field(
+        default=None,
+        description="Размер контекста модели",
+        alias="OLLAMA_NUM_CTX",
+    )
     cors_allow_origins: List[str] = Field(
         default_factory=lambda: ["*"],
         description="Список доменов, которым разрешен доступ",
