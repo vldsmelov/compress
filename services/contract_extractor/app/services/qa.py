@@ -7,7 +7,7 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Dict, List
 
-from app.core.config import CONFIG
+from ..core.config import CONFIG
 from .normalize import normalize_whitespace
 from .ollama_client import OllamaClient
 

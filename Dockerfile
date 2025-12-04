@@ -19,10 +19,10 @@ COPY services/contract_extractor/requirements.txt /tmp/requirements.txt
 RUN pip install --upgrade pip setuptools wheel \
     && pip install -r /tmp/requirements.txt
 
-COPY services/contract_extractor/app /opt/app/app
+COPY services/contract_extractor /opt/app/contract_extractor
 
 EXPOSE 8085
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8085"]
+CMD ["uvicorn", "contract_extractor.app.main:app", "--host", "0.0.0.0", "--port", "8085"]
 
 # --------------
 # AI economizer

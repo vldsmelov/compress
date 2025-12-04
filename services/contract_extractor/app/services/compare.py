@@ -1,5 +1,5 @@
 from typing import Dict, Any, List
-from app.core.config import CONFIG
+from ..core.config import CONFIG
 
 def _norm_str(s: str) -> str:
     # normalize spaces and quotes

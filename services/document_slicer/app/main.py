@@ -63,15 +63,20 @@ AI_ECONOM_SERVICE_URL = os.getenv("AI_ECONOM_SERVICE_URL", "http://ai_econom:100
 AI_LEGAL_SERVICE_URL = os.getenv(
     "AI_LEGAL_SERVICE_URL", "http://ai_legal:8000/api/sections/full-prepared"
 )
-CONTRACT_EXTRACTOR_URL = os.getenv(
+CONTRACT_EXTRACTOR_BASE_URL = os.getenv(
+    "CONTRACT_EXTRACTOR_BASE_URL", "http://contract_extractor:8085"
+)
+CONTRACT_EXTRACTOR_FALLBACK_BASE_URL = "http://localhost:8085"
+CONTRACT_EXTRACTOR_DEV_BASE_URL = os.getenv(
+    "CONTRACT_EXTRACTOR_DEV_BASE_URL", "http://contract_extractor:8000"
+)
+CONTRACT_EXTRACTOR_LOCALHOST_DEV_BASE_URL = "http://localhost:8000"
+LEGACY_CONTRACT_EXTRACTOR_URL = os.getenv(
     "CONTRACT_EXTRACTOR_URL", "http://contract_extractor:8085/qa/sections?plan=default"
 )
-CONTRACT_EXTRACTOR_FALLBACK_URL = "http://localhost:8085/qa/sections?plan=default"
-CONTRACT_EXTRACTOR_LOCAL_DEV_URL = (
-    os.getenv("CONTRACT_EXTRACTOR_LOCAL_DEV_URL")
-    or "http://contract_extractor:8000/qa/sections?plan=default"
+LEGACY_CONTRACT_EXTRACTOR_FALLBACK_URL = (
+    "http://localhost:8085/qa/sections?plan=default"
 )
-CONTRACT_EXTRACTOR_LOCALHOST_DEV_URL = "http://localhost:8000/qa/sections?plan=default"
 CONTRACT_EXTRACTOR_SECTIONS = [
     "part_4",
     "part_5",
@@ -132,29 +137,38 @@ def _iter_contract_extractor_urls() -> list[str]:
     raw_urls = os.getenv("CONTRACT_EXTRACTOR_URLS", "")
     explicit_urls = [url.strip() for url in raw_urls.split(",") if url.strip()]
 
-    urls: list[str] = []
+    base_candidates = [
+        CONTRACT_EXTRACTOR_BASE_URL,
+        CONTRACT_EXTRACTOR_FALLBACK_BASE_URL,
+        CONTRACT_EXTRACTOR_DEV_BASE_URL,
+        CONTRACT_EXTRACTOR_LOCALHOST_DEV_BASE_URL,
+    ]
 
-    for candidate in explicit_urls + [
-        CONTRACT_EXTRACTOR_URL,
-        CONTRACT_EXTRACTOR_FALLBACK_URL,
-        CONTRACT_EXTRACTOR_LOCAL_DEV_URL,
-        CONTRACT_EXTRACTOR_LOCALHOST_DEV_URL,
-    ]:
-        if candidate and candidate not in urls:
-            urls.append(candidate)
-
-    return urls
-
-
-def _iter_contract_extractor_urls() -> list[str]:
-    raw_urls = os.getenv("CONTRACT_EXTRACTOR_URLS", "")
-    explicit_urls = [url.strip() for url in raw_urls.split(",") if url.strip()]
+    legacy_candidates = [
+        LEGACY_CONTRACT_EXTRACTOR_URL,
+        LEGACY_CONTRACT_EXTRACTOR_FALLBACK_URL,
+    ]
 
     urls: list[str] = []
+    seen: set[str] = set()
 
-    for candidate in explicit_urls + [CONTRACT_EXTRACTOR_URL, CONTRACT_EXTRACTOR_FALLBACK_URL]:
-        if candidate and candidate not in urls:
-            urls.append(candidate)
+    def _add_url(url: str) -> None:
+        if url and url not in seen:
+            seen.add(url)
+            urls.append(url)
+
+    for candidate in [*explicit_urls, *base_candidates, *legacy_candidates]:
+        if not candidate:
+            continue
+
+        trimmed = candidate.strip().rstrip("/")
+
+        if "/qa/" in trimmed or "plan=" in trimmed:
+            _add_url(trimmed)
+            continue
+
+        for suffix in ("/qa/run-default", "/qa/sections?plan=default"):
+            _add_url(f"{trimmed}{suffix}")
 
     return urls
 
@@ -315,7 +329,7 @@ async def _call_contract_extractor_service(
 ) -> Dict[str, Any]:
     result: Dict[str, Any] = {
         "service": "contract_extractor",
-        "url": CONTRACT_EXTRACTOR_URL,
+        "url": None,
         "status": None,
         "response": None,
         "error": None,
@@ -334,19 +348,23 @@ async def _call_contract_extractor_service(
         result["url"] = url
         try:
             response = await client.post(
-                url, json=payload, headers={"accept": "application/json"}
+                url,
+                json=payload,
+                headers={"accept": "application/json", "content-type": "application/json"},
             )
             result["status"] = response.status_code
             if response.status_code == 200:
                 result["response"] = _parse_response_payload(response)
+                break
             else:
-                result["error"] = response.text
-            break
+                errors.append(f"{url}: {response.status_code} {response.text}")
         except Exception as exc:  # pragma: no cover - defensive external call guard
             errors.append(f"{url}: {exc}")
 
     if result["status"] is None and errors:
         result["error"] = f"All connection attempts failed ({'; '.join(errors)})"
+    elif result["status"] is not None and result["response"] is None and errors:
+        result["error"] = errors[-1]
 
     return result
 

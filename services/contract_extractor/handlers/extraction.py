@@ -115,6 +115,25 @@ async def _run_queries(sections_map: Dict[str, str], queries: List[Dict[str, Any
     return {"ok": True, "result": aggregated, "responses": responses}
 
 
+def _build_empty_result(queries: List[Dict[str, Any]]) -> Dict[str, Any]:
+    aggregated: Dict[str, Any] = {}
+    responses: List[Dict[str, Any]] = []
+
+    for query in queries:
+        skeleton = {key: "" for key in query.get("answer", [])}
+        aggregated.update(skeleton)
+        responses.append(
+            {
+                "question": query.get("question", ""),
+                "parts": query.get("parts", []),
+                "result": skeleton,
+                "note": "LLM unavailable, returned empty placeholders",
+            }
+        )
+
+    return {"ok": False, "result": aggregated, "responses": responses}
+
+
 async def _attach_sb_check(payload: Dict[str, Any]) -> Dict[str, Any]:
     sb_payload = {
         "status": 0,
@@ -183,8 +202,6 @@ def _normalize_sections_map(sections: Dict[str, Any]) -> Dict[str, str]:
 
 
 async def qa_sections(sections: Dict[str, Any], plan: str):
-    ensure_qa_service()
-
     normalized_sections = _normalize_sections_map(sections)
     queries = _load_qa_plan(plan)
     plan_parts = _collect_plan_parts(queries)
@@ -193,14 +210,21 @@ async def qa_sections(sections: Dict[str, Any], plan: str):
     if not filtered_sections:
         raise HTTPException(status_code=400, detail="No contract sections match the QA plan")
 
-    try:
-        qa_result = await _run_queries(filtered_sections, queries)
-    except OllamaServiceError as exc:
-        logging.exception("Ollama service error during QA plan execution")
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except Exception as exc:  # pragma: no cover
-        logging.exception("Unhandled error during QA plan execution")
-        raise HTTPException(status_code=500, detail="Internal processing error") from exc
+    qa_service = get_qa_service()
+
+    if qa_service is None:
+        qa_result = _build_empty_result(queries)
+    else:
+        try:
+            qa_result = await _run_queries(filtered_sections, queries)
+        except OllamaServiceError as exc:
+            logging.exception("Ollama service error during QA plan execution")
+            qa_result = _build_empty_result(queries)
+            qa_result["error"] = str(exc)
+        except Exception as exc:  # pragma: no cover
+            logging.exception("Unhandled error during QA plan execution")
+            qa_result = _build_empty_result(queries)
+            qa_result["error"] = "Internal processing error"
 
     await _attach_sb_check(qa_result)
     return qa_result
