@@ -442,6 +442,13 @@ async def dispatch_sections(file: UploadFile = File(...)) -> JSONResponse:
     return JSONResponse(content=responses)
 
 
+@app.post("/api/dispatcher")
+async def dispatch_sections_alias(file: UploadFile = File(...)) -> JSONResponse:
+    """Backward-compatible alias for section dispatching."""
+
+    return await dispatch_sections(file)
+
+
 @app.get("/time")
 async def time_page():
     return FileResponse("static/time.html")
