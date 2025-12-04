@@ -66,6 +66,12 @@ AI_LEGAL_SERVICE_URL = os.getenv(
 CONTRACT_EXTRACTOR_URL = os.getenv(
     "CONTRACT_EXTRACTOR_URL", "http://contract_extractor:8085/qa/sections?plan=default"
 )
+CONTRACT_EXTRACTOR_FALLBACK_URL = "http://localhost:8085/qa/sections?plan=default"
+CONTRACT_EXTRACTOR_LOCAL_DEV_URL = (
+    os.getenv("CONTRACT_EXTRACTOR_LOCAL_DEV_URL")
+    or "http://contract_extractor:8000/qa/sections?plan=default"
+)
+CONTRACT_EXTRACTOR_LOCALHOST_DEV_URL = "http://localhost:8000/qa/sections?plan=default"
 CONTRACT_EXTRACTOR_SECTIONS = [
     "part_4",
     "part_5",
@@ -118,7 +124,26 @@ def _serialize_parts(sections: list[SectionChunk], blocks_html: str) -> dict[str
 
 
 def _select_contract_sections(parts: dict[str, str]) -> dict[str, str]:
-    return {key: parts.get(key, "") for key in CONTRACT_EXTRACTOR_SECTIONS}
+    selected = {key: parts.get(key, "").strip() for key in CONTRACT_EXTRACTOR_SECTIONS}
+    return {key: value for key, value in selected.items() if value}
+
+
+def _iter_contract_extractor_urls() -> list[str]:
+    raw_urls = os.getenv("CONTRACT_EXTRACTOR_URLS", "")
+    explicit_urls = [url.strip() for url in raw_urls.split(",") if url.strip()]
+
+    urls: list[str] = []
+
+    for candidate in explicit_urls + [
+        CONTRACT_EXTRACTOR_URL,
+        CONTRACT_EXTRACTOR_FALLBACK_URL,
+        CONTRACT_EXTRACTOR_LOCAL_DEV_URL,
+        CONTRACT_EXTRACTOR_LOCALHOST_DEV_URL,
+    ]:
+        if candidate and candidate not in urls:
+            urls.append(candidate)
+
+    return urls
 
 
 def _extract_specification_text(blocks: list[Any]) -> str:
@@ -283,19 +308,32 @@ async def _call_contract_extractor_service(
         "error": None,
     }
 
-    try:
-        response = await client.post(
-            CONTRACT_EXTRACTOR_URL,
-            json={"sections": _select_contract_sections(parts)},
-            headers={"accept": "application/json"},
-        )
-        result["status"] = response.status_code
-        if response.status_code == 200:
-            result["response"] = _parse_response_payload(response)
-        else:
-            result["error"] = response.text
-    except Exception as exc:  # pragma: no cover - defensive external call guard
-        result["error"] = str(exc)
+    errors: list[str] = []
+    contract_sections = _select_contract_sections(parts)
+
+    if not contract_sections:
+        result["error"] = "No contract sections available for extraction"
+        return result
+
+    payload = {"sections": contract_sections}
+
+    for url in _iter_contract_extractor_urls():
+        result["url"] = url
+        try:
+            response = await client.post(
+                url, json=payload, headers={"accept": "application/json"}
+            )
+            result["status"] = response.status_code
+            if response.status_code == 200:
+                result["response"] = _parse_response_payload(response)
+            else:
+                result["error"] = response.text
+            break
+        except Exception as exc:  # pragma: no cover - defensive external call guard
+            errors.append(f"{url}: {exc}")
+
+    if result["status"] is None and errors:
+        result["error"] = f"All connection attempts failed ({'; '.join(errors)})"
 
     return result
 
