@@ -85,6 +85,13 @@ def _load_qa_plan(plan_name: str) -> List[Dict[str, Any]]:
     return _normalize_queries(plan_payload)
 
 
+def _collect_plan_parts(queries: List[Dict[str, Any]]) -> set[str]:
+    parts: set[str] = set()
+    for query in queries:
+        parts.update(query.get("parts", []))
+    return parts
+
+
 async def _run_queries(sections_map: Dict[str, str], queries: List[Dict[str, Any]]):
     qa_service = ensure_qa_service()
     aggregated: Dict[str, Any] = {}
@@ -175,9 +182,14 @@ async def qa_sections(sections: Dict[str, Any], plan: str):
 
     normalized_sections = _normalize_sections_map(sections)
     queries = _load_qa_plan(plan)
+    plan_parts = _collect_plan_parts(queries)
+    filtered_sections = {k: v for k, v in normalized_sections.items() if k in plan_parts}
+
+    if not filtered_sections:
+        raise HTTPException(status_code=400, detail="No contract sections match the QA plan")
 
     try:
-        qa_result = await _run_queries(normalized_sections, queries)
+        qa_result = await _run_queries(filtered_sections, queries)
     except OllamaServiceError as exc:
         logging.exception("Ollama service error during QA plan execution")
         raise HTTPException(status_code=502, detail=str(exc)) from exc
