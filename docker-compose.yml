@@ -1,16 +1,47 @@
+x-ollama-model: &ollama-model
+  OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:14b}
+
 services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
+      OLLAMA_GPU_DRIVER: ${OLLAMA_GPU_DRIVER:-cuda}
+      CUDA_VERSION: ${CUDA_VERSION:-13}
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - app-network
+
   contract_extractor:
-    build: ./services/contract_extractor
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: contract_extractor
     container_name: contract_extractor
     environment:
-      - MODEL=${MODEL:-qwen3:14b}
-      - TEMPERATURE=${TEMPERATURE:-0.1}
-      - MAX_TOKENS=${MAX_TOKENS:-1024}
-      # - OLLAMA_HOST=http://ollama_ext:11434
-      - OLLAMA_HOST=http://192.168.3.63:11434
-      - NUMERIC_TOLERANCE=${NUMERIC_TOLERANCE:-0.01}
-      - USE_LLM=${USE_LLM:-true}
-      - API_PORT=${API_PORT:-8085}
+      <<: *ollama-model
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-${MODEL:-qwen3:14b}}
+      OLLAMA_HOST: http://ollama:11434
+      MODEL: ${MODEL:-${OLLAMA_MODEL:-qwen3:14b}}
+      TEMPERATURE: ${TEMPERATURE:-0.1}
+      MAX_TOKENS: ${MAX_TOKENS:-32000}
+      NUMERIC_TOLERANCE: ${NUMERIC_TOLERANCE:-0.01}
+      USE_LLM: ${USE_LLM:-true}
+      API_PORT: ${API_PORT:-8085}
     command: uvicorn app.main:app --host 0.0.0.0 --port 8085 --reload --log-level info
     ports:
       - "${API_PORT:-8085}:8085"
@@ -20,49 +51,60 @@ services:
       timeout: 5s
       retries: 20
     restart: unless-stopped
-    # depends_on:
-    #   - ollama_ext
+    depends_on:
+      - ollama
     networks:
       - app-network
+
   ai_econom:
-    build: ./services/ai_econom
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ai_econom
     container_name: ai_econom
     environment:
-      # - OLLAMA_HOST=ollama_ext
-      - OLLAMA_HOST=192.168.3.63
-      - OLLAMA_PORT=11434
-      - OLLAMA_MODEL=${AI_ECON_OLLAMA_MODEL:-qwen2.5vl:32b}
+      <<: *ollama-model
+      OLLAMA_MODEL: ${AI_ECON_OLLAMA_MODEL:-${OLLAMA_MODEL:-qwen3:14b}}
+      OLLAMA_HOST: ollama
+      OLLAMA_PORT: 11434
     ports:
       - "10000:10000"
     volumes:
       - ./services/ai_econom/data:/app/data
     restart: unless-stopped
-    # depends_on:
-    #   - ollama_ext
+    depends_on:
+      - ollama
     networks:
       - app-network
+
   ai_legal:
-    build: ./services/ai_legal
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ai_legal
     container_name: ai_legal
     environment:
-      # - OLLAMA_BASE_URL=http://ollama_ext:11434
-      - OLLAMA_BASE_URL=http://192.168.3.63:11434
-      - OLLAMA_MODEL=${AI_LEGAL_MODEL:-qwen3:14b}
+      <<: *ollama-model
+      OLLAMA_MODEL: ${AI_LEGAL_MODEL:-${OLLAMA_MODEL:-qwen3:14b}}
+      OLLAMA_BASE_URL: http://ollama:11434
     ports:
       - "8092:8000"
     restart: unless-stopped
-    # depends_on:
-    #   - ollama_ext
+    depends_on:
+      - ollama
     networks:
       - app-network
 
   document_slicer:
-    build: ./services/document_slicer
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: document_slicer
     container_name: document_slicer
     environment:
       - AI_ECONOM_SERVICE_URL=http://ai_econom:10000/analyze
       - AI_LEGAL_SERVICE_URL=http://ai_legal:8000/api/sections/full
-      - CONTRACT_EXTRACTOR_URL=http://contract_extractor:8085/qa/docx?plan=default
+      - CONTRACT_EXTRACTOR_URL=http://contract_extractor:8085/qa/sections?plan=default
       - SERVICE_HTTP_TIMEOUT=${SERVICE_HTTP_TIMEOUT:-120}
     ports:
       - "8090:8000"
@@ -75,9 +117,12 @@ services:
       - contract_extractor
     networks:
       - app-network
+
   admin-panel:
     build:
-      context: ./services/admin-panel
+      context: .
+      dockerfile: Dockerfile
+      target: admin-panel
       args:
         VITE_SLICER_API_BASE_URL: http://localhost:8090
         VITE_AI_LEGAL_API_BASE_URL: http://localhost:8092
@@ -90,20 +135,10 @@ services:
     restart: unless-stopped
     networks:
       - app-network
-  # ollama_ext:
-  #   image: ollama/ollama:latest
-  #   container_name: ollama_ext
-  #   ports:
-  #     - "11434:11434"
-  #   volumes:
-  #      - ollama_data:/root/.ollama
-  #   restart: unless-stopped
-  #   networks:
-  #     - app-network
 
 volumes:
   document_data:
-  # ollama_data:
+  ollama_data:
 
 networks:
   app-network:
