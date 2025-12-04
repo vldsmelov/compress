@@ -32,6 +32,7 @@ class OllamaClient:
     def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None):
         self.base_url = base_url or CONFIG.ollama_host
         self.model = model or CONFIG.model_name
+        self.num_ctx = CONFIG.num_ctx
 
     async def chat(
         self,
@@ -44,6 +45,9 @@ class OllamaClient:
             "temperature": temperature if temperature is not None else CONFIG.temperature,
             "num_predict": max_tokens if max_tokens is not None else CONFIG.max_tokens,
         }
+
+        if self.num_ctx:
+            options["num_ctx"] = self.num_ctx
 
         timeout = httpx.Timeout(
             timeout=CONFIG.ollama_read_timeout + 10.0,

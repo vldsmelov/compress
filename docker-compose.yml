@@ -1,5 +1,5 @@
 x-ollama-model: &ollama-model
-  OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:14b}
+  OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:14b-8k}
 
 services:
   ollama:
@@ -34,9 +34,9 @@ services:
     container_name: contract_extractor
     environment:
       <<: *ollama-model
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-${MODEL:-qwen3:14b}}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-${MODEL:-qwen3:14b-8k}}
       OLLAMA_HOST: http://ollama:11434
-      MODEL: ${MODEL:-${OLLAMA_MODEL:-qwen3:14b}}
+      MODEL: ${MODEL:-${OLLAMA_MODEL:-qwen3:14b-8k}}
       TEMPERATURE: ${TEMPERATURE:-0.1}
       MAX_TOKENS: ${MAX_TOKENS:-32000}
       NUMERIC_TOLERANCE: ${NUMERIC_TOLERANCE:-0.01}
@@ -64,7 +64,7 @@ services:
     container_name: ai_econom
     environment:
       <<: *ollama-model
-      OLLAMA_MODEL: ${AI_ECON_OLLAMA_MODEL:-${OLLAMA_MODEL:-qwen3:14b}}
+      OLLAMA_MODEL: ${AI_ECON_OLLAMA_MODEL:-${OLLAMA_MODEL:-qwen3:14b-8k}}
       OLLAMA_HOST: ollama
       OLLAMA_PORT: 11434
     ports:
@@ -85,7 +85,7 @@ services:
     container_name: ai_legal
     environment:
       <<: *ollama-model
-      OLLAMA_MODEL: ${AI_LEGAL_MODEL:-${OLLAMA_MODEL:-qwen3:14b}}
+      OLLAMA_MODEL: ${AI_LEGAL_MODEL:-${OLLAMA_MODEL:-qwen3:14b-8k}}
       OLLAMA_BASE_URL: http://ollama:11434
     ports:
       - "8092:8000"

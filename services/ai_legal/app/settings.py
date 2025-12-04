@@ -15,7 +15,7 @@ class Settings(BaseSettings):
         alias="OLLAMA_BASE_URL",
     )
     ollama_model: str = Field(
-        default="qwen3:14b",
+        default="qwen3:14b-8k",
         description="Имя модели Ollama",
         alias="OLLAMA_MODEL",
     )
@@ -23,6 +23,11 @@ class Settings(BaseSettings):
         default=120.0,
         description="Таймаут запросов к Ollama в секундах",
         alias="OLLAMA_TIMEOUT",
+    )
+    ollama_num_ctx: int | None = Field(
+        default=None,
+        description="Размер контекста модели",
+        alias="OLLAMA_NUM_CTX",
     )
     cors_allow_origins: List[str] = Field(
         default_factory=lambda: ["*"],

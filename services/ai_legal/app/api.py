@@ -24,9 +24,36 @@ async def health() -> HealthResponse:
         model_available=settings.ollama_model in available,
     )
 
+
+def _validate_document_slicer_payload(payload: dict[str, str]) -> None:
+    if not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Тело запроса не похоже на результат document_slicer: "
+                "ожидается JSON-объект с ключами part_0..part_16"
+            ),
+        )
+
+    expected_keys = {f"part_{index}" for index in range(17)}
+    missing = sorted(expected_keys - payload.keys())
+
+    if missing:
+        missing_readable = ", ".join(missing)
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Тело запроса не похоже на результат document_slicer: "
+                f"отсутствуют ключи {missing_readable}"
+            ),
+        )
+
+
 async def _prepare_sections_from_payload(
     payload: dict[str, str]
 ) -> tuple[str, str | None, list[str], list[int | None], str]:
+    _validate_document_slicer_payload(payload)
+
     sections, specification_text = build_chunks_from_payload(payload)
     combined_text = build_sections_instruction(sections)
     document_html = render_document_html(sections, specification_text)
