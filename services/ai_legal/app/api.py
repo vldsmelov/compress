@@ -97,15 +97,8 @@ async def review_prepared_sections(
     )
 
     return FullProcessingResponse(
-        docx_text=document_html,
-        specification_text=specification_text,
         overall_score=overall_score,
-        inaccuracy=inaccuracy,
-        red_flags=red_flags,
-        sections=reviews,
         html=html_report,
-        debug=debug,
-        debug_message=None,
     )
 
 @router.post(
@@ -128,7 +121,5 @@ async def review_full(
 
     return FullProcessingResponse(
         overall_score=overall_score,
-        inaccuracy=inaccuracy,
-        red_flags=red_flags or "",
         html=html_report,
     )

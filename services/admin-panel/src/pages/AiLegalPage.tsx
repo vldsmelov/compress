@@ -101,38 +101,17 @@ export function AiLegalPage({ baseUrl }: AiLegalPageProps) {
           </div>
 
           <div className="results__grid">
+            {typeof result.overall_score === 'number' && (
+              <article className="results__card">
+                <div className="results__title">Итоговая оценка</div>
+                <div className="results__text">{result.overall_score}</div>
+              </article>
+            )}
+
             {result.html && (
               <article className="results__card results__card--wide">
                 <div className="results__title">HTML отчёт</div>
                 <div className="results__html" dangerouslySetInnerHTML={{ __html: result.html }} />
-              </article>
-            )}
-
-            {result.docx_text && (
-              <article className="results__card results__card--wide">
-                <div className="results__title">Полный текст договора</div>
-                <div className="results__html" dangerouslySetInnerHTML={{ __html: result.docx_text }} />
-              </article>
-            )}
-
-            {result.specification_text && (
-              <article className="results__card results__card--wide">
-                <div className="results__title">specification_text</div>
-                <pre className="results__text">{result.specification_text}</pre>
-              </article>
-            )}
-
-            {result.debug?.prompt_formatted && (
-              <article className="results__card results__card--wide">
-                <div className="results__title">Промпт</div>
-                <pre className="results__text">{result.debug.prompt_formatted}</pre>
-              </article>
-            )}
-
-            {result.debug?.response_formatted && (
-              <article className="results__card results__card--wide">
-                <div className="results__title">Ответ модели</div>
-                <pre className="results__text">{result.debug.response_formatted}</pre>
               </article>
             )}
           </div>

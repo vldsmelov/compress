@@ -17,29 +17,9 @@ export type SpecificationJson = {
 export type SplitResponse = Record<string, string | SpecificationJson | null>;
 export type SpecificationResponse = { spec_json: SpecificationJson | null };
 
-export type SectionReview = {
-  number: number | null;
-  title: string;
-  resume: string;
-  risks: string;
-  score: string;
-};
-
 export type AiLegalResponse = {
-  docx_text?: string;
-  specification_text?: string;
   overall_score?: number;
-  inaccuracy?: string;
-  red_flags: string;
   html: string;
-  debug?: {
-    prompt: { role: string; content: string }[];
-    prompt_formatted: string;
-    response: Record<string, unknown>;
-    response_formatted: string;
-  };
-  debug_message?: string;
-  sections?: SectionReview[];
 };
 
 export type DispatchServiceResult = {
