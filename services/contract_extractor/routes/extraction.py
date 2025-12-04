@@ -24,6 +24,13 @@ async def qa_sections_route(payload: SectionsPayload, plan: str = Query("default
     return await qa_sections(payload.sections, plan)
 
 
+@router.post("/qa/run-default")
+async def qa_run_default(payload: SectionsPayload):
+    """Run QA using the built-in ``default`` plan against the provided sections."""
+
+    return await qa_sections(payload.sections, "default")
+
+
 @router.get("/qa/sample-payload")
 async def qa_sample_payload():
     """Provide a minimal payload that the /qa/sections endpoint accepts."""
