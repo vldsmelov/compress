@@ -307,7 +307,7 @@ async def split_document(file: UploadFile = File(...)) -> JSONResponse:
     return JSONResponse(content=parts)
 
 
-@app.post("/test/")
+@app.post("/test")
 async def test_split_document(file: UploadFile = File(...)) -> JSONResponse:
     file_name, _, content = await _read_upload_file(file)
     parts = _extract_parts(file_name, content)

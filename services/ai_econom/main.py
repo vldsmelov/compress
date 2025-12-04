@@ -13,7 +13,7 @@ app = FastAPI(title="Purchase Analysis API")
 # OLLAMA_HOST = os.getenv("OLLAMA_HOST", "ollama_ext")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "ollama")
 OLLAMA_PORT = os.getenv("OLLAMA_PORT", "11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:14b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:14b-8k")
 
 raw_num_ctx = os.getenv("NUM_CTX") or os.getenv("OLLAMA_NUM_CTX")
 NUM_CTX = None

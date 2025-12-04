@@ -15,7 +15,7 @@ class Settings(BaseSettings):
         alias="OLLAMA_BASE_URL",
     )
     ollama_model: str = Field(
-        default="qwen3:14b",
+        default="qwen3:14b-8k",
         description="Имя модели Ollama",
         alias="OLLAMA_MODEL",
     )
