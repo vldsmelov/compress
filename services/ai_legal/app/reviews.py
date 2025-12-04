@@ -27,6 +27,20 @@ _SYSTEM_PROMPT = (
 )
 
 
+def _build_alignment_instruction(titles: list[str]) -> str:
+    ordered_titles = ", ".join(titles)
+    sections_count = len(titles)
+    return (
+        "Ты должен вернуть разделы в том же порядке, что и во входных данных. "
+        f"Всего разделов (включая шапку и спецификацию) — {sections_count}. "
+        f"Порядок разделов: {ordered_titles}. "
+        "Ответ json должен содержать ключ sections с массивом ровно из этого количества элементов. "
+        "Если по разделу нет информации, всё равно заполни его: resume — 'Информации недостаточно',"
+        " risks — 'Риски не выявлены', score — '5'. "
+        "Резюме и риски должны быть максимально лаконичными (не более 2 предложений на поле)."
+    )
+
+
 def _parse_titles(source: str) -> list[str]:
     pattern = re.compile(r"^(Шапка|Раздел\s+\d+|Спецификация):", re.MULTILINE)
     titles: list[str] = []
@@ -133,9 +147,12 @@ def _normalize_reviews(
     for index, item in enumerate(padded_items):
         fallback_title = titles[index] if index < len(titles) else f"Раздел {index + 1}"
         title = str(item.get("title") or fallback_title)
-        resume = str(item.get("resume") or "").strip()
-        risks = str(item.get("risks") or "").strip()
-        score = str(item.get("score") or "").strip()
+        resume_raw = str(item.get("resume") or "").strip()
+        risks_raw = str(item.get("risks") or "").strip()
+        score_raw = str(item.get("score") or "").strip()
+        resume = resume_raw or "Информации недостаточно"
+        risks = risks_raw or "Риски не выявлены"
+        score = score_raw or "5"
         number = None
         if numbers and index < len(numbers):
             number = numbers[index]
@@ -317,6 +334,7 @@ async def evaluate_section_file(
     titles = expected_titles or _parse_titles(content)
     messages = [
         {"role": "system", "content": _SYSTEM_PROMPT},
+        {"role": "system", "content": _build_alignment_instruction(titles)},
         {"role": "user", "content": content},
     ]
 
