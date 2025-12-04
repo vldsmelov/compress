@@ -93,7 +93,7 @@ def _section_to_text(section: SectionChunk) -> str:
 
 
 def _serialize_parts(sections: list[SectionChunk], blocks_html: str) -> dict[str, str]:
-    payload: dict[str, str] = {}
+    payload: dict[str, str] = {f"part_{index}": "" for index in range(17)}
 
     for section in sections:
         if section.number is None:
@@ -112,8 +112,7 @@ def _serialize_parts(sections: list[SectionChunk], blocks_html: str) -> dict[str
             value for value in (existing.strip(), section_text) if value
         )
 
-    if blocks_html.strip():
-        payload["part_16"] = blocks_html
+    payload["part_16"] = blocks_html.strip()
 
     return payload
 
@@ -305,6 +304,13 @@ async def split_document(file: UploadFile = File(...)) -> JSONResponse:
     file_name, _, content = await _read_upload_file(file)
     parts = _extract_parts(file_name, content)
     _persist_sections(parts)
+    return JSONResponse(content=parts)
+
+
+@app.post("/test/")
+async def test_split_document(file: UploadFile = File(...)) -> JSONResponse:
+    file_name, _, content = await _read_upload_file(file)
+    parts = _extract_parts(file_name, content)
     return JSONResponse(content=parts)
 
 
