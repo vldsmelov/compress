@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from typing import Optional
 
 import httpx
 from httpx import HTTPStatusError, HTTPError
-from ..core.config import CONFIG
+
+from ..core.config import Settings, get_settings
 
 
 class OllamaServiceError(RuntimeError):
@@ -29,10 +32,11 @@ def _summarize_http_error(exc: HTTPStatusError, endpoint: str) -> str:
     )
 
 class OllamaClient:
-    def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None):
-        self.base_url = base_url or CONFIG.ollama_host
-        self.model = model or CONFIG.model_name
-        self.num_ctx = CONFIG.num_ctx
+    def __init__(self, settings: Optional[Settings] = None):
+        self.settings = settings or get_settings()
+        self.base_url = self.settings.ollama_host
+        self.model = self.settings.model_name
+        self.num_ctx = self.settings.num_ctx
 
     async def chat(
         self,
@@ -42,17 +46,17 @@ class OllamaClient:
         max_tokens: int | None = None,
     ) -> str:
         options = {
-            "temperature": temperature if temperature is not None else CONFIG.temperature,
-            "num_predict": max_tokens if max_tokens is not None else CONFIG.max_tokens,
+            "temperature": temperature if temperature is not None else self.settings.temperature,
+            "num_predict": max_tokens if max_tokens is not None else self.settings.max_tokens,
         }
 
         if self.num_ctx:
             options["num_ctx"] = self.num_ctx
 
         timeout = httpx.Timeout(
-            timeout=CONFIG.ollama_read_timeout + 10.0,
+            timeout=self.settings.ollama_read_timeout + 10.0,
             connect=10.0,
-            read=CONFIG.ollama_read_timeout,
+            read=self.settings.ollama_read_timeout,
         )
         
         async with httpx.AsyncClient(base_url=self.base_url, timeout=timeout) as client:
@@ -79,7 +83,6 @@ class OllamaClient:
             except httpx.ConnectError as exc:
                 raise OllamaServiceError(
                     "Unable to connect to the Ollama service at "
-                    # f"{self.base_url}. Ensure the service is running at http://ollama_ext:11434."
                     f"{self.base_url}. Ensure the service is running at http://ollama:11434."
                 ) from exc
             except HTTPStatusError as exc:
@@ -87,8 +90,7 @@ class OllamaClient:
                     raise OllamaServiceError(_summarize_http_error(exc, "/api/chat")) from exc
             except HTTPError as exc:
                 raise OllamaServiceError(
-                    "Unexpected error while communicating with the Ollama service. "
-                    f"{exc}"
+                    f"Unexpected error while communicating with the Ollama service. {exc}"
                 ) from exc
 
             # Fallback для старых версий Ollama без /api/chat
@@ -113,7 +115,6 @@ class OllamaClient:
                 raise OllamaServiceError(
                     "Unable to connect to the Ollama service at "
                     f"{self.base_url} when using the fallback API. Ensure the service "
-                    # "is running at http://ollama_ext:11434."
                     "is running at http://ollama:11434."
                 ) from exc
             except HTTPStatusError as exc:
@@ -140,13 +141,10 @@ class OllamaClient:
                 raise OllamaServiceError(
                     "Unable to connect to the Ollama service at "
                     f"{self.base_url} when requesting the model list. Ensure the service "
-                    # "is running at http://ollama_ext:11434."
                     "is running at http://ollama:11434."
                 ) from exc
             except HTTPStatusError as exc:
-                raise OllamaServiceError(
-                    _summarize_http_error(exc, "/api/tags")
-                ) from exc
+                raise OllamaServiceError(_summarize_http_error(exc, "/api/tags")) from exc
             except HTTPError as exc:
                 raise OllamaServiceError(
                     "Unexpected error while requesting the model list from the Ollama service. "
