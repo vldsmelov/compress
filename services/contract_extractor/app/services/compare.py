@@ -1,11 +1,13 @@
-from typing import Dict, Any, List
-from ..core.config import CONFIG
+from typing import Any, Dict, List
+
+from ..core.config import get_settings
 
 def _norm_str(s: str) -> str:
     # normalize spaces and quotes
     return str(s).strip().replace('\u00A0', ' ').replace('“', '"').replace('”', '"').replace('«','"').replace('»','"')
 
 def compare_dicts(expected: Dict[str, Any], predicted: Dict[str, Any]) -> (List[Dict[str, Any]], Dict[str, Any]):
+    settings = get_settings()
     rows = []
     mismatches = 0
     total = 0
@@ -18,7 +20,7 @@ def compare_dicts(expected: Dict[str, Any], predicted: Dict[str, Any]) -> (List[
 
         if isinstance(e, (int, float)) and isinstance(p, (int, float)):
             diff = abs(float(e) - float(p))
-            match = diff <= CONFIG.numeric_tolerance
+            match = diff <= settings.numeric_tolerance
             if not match:
                 mismatches += 1
                 note = f"Δ={diff:.4f}"
@@ -39,6 +41,6 @@ def compare_dicts(expected: Dict[str, Any], predicted: Dict[str, Any]) -> (List[
         "total_fields": total,
         "matches": total - mismatches,
         "mismatches": mismatches,
-        "numeric_tolerance": CONFIG.numeric_tolerance
+        "numeric_tolerance": settings.numeric_tolerance,
     }
     return rows, summary
