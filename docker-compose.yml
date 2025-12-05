@@ -70,10 +70,24 @@ services:
     ports:
       - "10000:10000"
     volumes:
-      - ./services/ai_econom/data:/app/data
+      - ./services/budget_service/data:/app/data
     restart: unless-stopped
     depends_on:
       - ollama
+    networks:
+      - app-network
+
+  budget_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: budget_service
+    container_name: budget_service
+    ports:
+      - "10010:10010"
+    volumes:
+      - ./services/budget_service/data:/app/data
+    restart: unless-stopped
     networks:
       - app-network
 

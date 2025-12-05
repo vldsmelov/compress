@@ -38,6 +38,20 @@ COPY services/ai_econom /app
 EXPOSE 10000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]
 
+# ----------------
+# Budget service
+# ----------------
+FROM python-base AS budget_service
+WORKDIR /app
+
+COPY services/budget_service/requirements.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
+
+COPY services/budget_service /app
+
+EXPOSE 10010
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10010"]
+
 # ---------
 # AI legal
 # ---------
