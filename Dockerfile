@@ -103,3 +103,40 @@ COPY --from=admin_panel_build /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
+
+# -------------
+# Gateway
+# -------------
+FROM python-base AS gateway
+WORKDIR /app
+
+COPY services/gateway/requirements.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
+COPY services/gateway/app /app/app
+
+EXPOSE 8099
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8099"]
+
+# -------------
+# Aggregator
+# -------------
+FROM python-base AS aggregator
+WORKDIR /app
+
+COPY services/aggregator/requirements.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
+COPY services/aggregator /app
+
+CMD ["python", "main.py"]
+
+# --------
+# AI SB
+# --------
+FROM python-base AS ai_sb
+WORKDIR /app
+
+COPY services/ai_sb/requirements.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
+COPY services/ai_sb /app
+
+CMD ["python", "main.py"]
