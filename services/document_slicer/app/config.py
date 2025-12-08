@@ -10,6 +10,28 @@ from typing import List
 class Settings:
     """Centralized configuration for the document slicer service."""
 
+    rabbitmq_url: str = field(default_factory=lambda: os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq/"))
+    upload_queue: str = field(default_factory=lambda: os.getenv("DOC_UPLOAD_QUEUE", "doc_upload"))
+    ai_legal_queue: str = field(default_factory=lambda: os.getenv("AI_LEGAL_QUEUE", "ai_legal_parts"))
+    ai_econom_queue: str = field(default_factory=lambda: os.getenv("AI_ECONOM_QUEUE", "ai_econom_parts"))
+    contract_extractor_queue: str = field(default_factory=lambda: os.getenv("CONTRACT_EXTRACTOR_QUEUE", "contract_extractor_parts"))
+    aggregation_queue: str = field(default_factory=lambda: os.getenv("AGGREGATION_QUEUE", "aggregation_tasks"))
+
+    ai_econom_sections: List[str] = field(default_factory=lambda: ["part_16"])
+
+    contract_extractor_sections: List[str] = field(
+        default_factory=lambda: [
+            "part_4",
+            "part_5",
+            "part_6",
+            "part_7",
+            "part_11",
+            "part_12",
+            "part_15",
+            "part_16",
+        ]
+    )
+
     ai_econom_url: str = field(
         default_factory=lambda: os.getenv(
             "AI_ECONOM_SERVICE_URL", "http://ai_econom:10000/analyze"
@@ -49,7 +71,7 @@ class Settings:
         default_factory=lambda: os.getenv("PART_16_FILE_NAME", "part_16.json")
     )
 
-    contract_extractor_sections: List[str] = field(
+    contract_extractor_sections_legacy: List[str] = field(
         default_factory=lambda: [
             "part_4",
             "part_5",
@@ -72,6 +94,10 @@ class Settings:
         if raw:
             return Path(raw)
         return self.data_volume_path / self.part_16_file_name
+
+    @property
+    def contract_extractor_sections(self) -> List[str]:
+        return self.contract_extractor_sections_legacy
 
     @property
     def contract_extractor_urls(self) -> List[str]:
