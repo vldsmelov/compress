@@ -31,11 +31,16 @@ class Aggregator:
     async def _publish_final(self, channel: aio_pika.Channel, task_id: str, state: AggregationState) -> None:
         if not state.reply_to:
             return
-        queue = await channel.declare_queue(state.reply_to, durable=True)
+
         payload = {
             "task_id": task_id,
             "result": self._merge_results(state),
         }
+
+        # The gateway creates a short-lived, exclusive reply queue for each request. Declaring
+        # it here with durability or other mismatched flags causes RabbitMQ to drop the channel
+        # (PRECONDITION_FAILED) and the response never reaches the client. Instead, publish
+        # directly to the existing queue without redeclaring it.
         await channel.default_exchange.publish(
             aio_pika.Message(
                 body=json.dumps(payload, ensure_ascii=False).encode(),
@@ -43,7 +48,7 @@ class Aggregator:
                 content_type="application/json",
                 delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
             ),
-            routing_key=queue.name,
+            routing_key=state.reply_to,
         )
 
     def _ensure_state(self, task_id: str, reply_to: str | None, expected: Optional[Set[str]] = None) -> AggregationState:
