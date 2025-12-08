@@ -19,18 +19,6 @@ class Settings:
 
     ai_econom_sections: List[str] = field(default_factory=lambda: ["part_16"])
 
-    contract_extractor_sections: List[str] = field(
-        default_factory=lambda: [
-            "part_4",
-            "part_5",
-            "part_6",
-            "part_7",
-            "part_11",
-            "part_12",
-            "part_15",
-            "part_16",
-        ]
-    )
 
     ai_econom_url: str = field(
         default_factory=lambda: os.getenv(
