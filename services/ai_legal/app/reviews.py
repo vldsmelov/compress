@@ -4,12 +4,10 @@ import html
 import json
 import math
 import re
-import textwrap
+from dataclasses import dataclass
 from typing import Iterable
 
-import httpx
-
-from .llm import build_debug_info, client, extract_reply
+from .llm_client import build_debug_info, client, extract_reply, OllamaClient
 from .schemas import LlmDebugInfo, SectionReview
 
 _SYSTEM_PROMPT = (
@@ -323,40 +321,64 @@ def _build_html_report(
     """.strip()
 
 
-async def evaluate_section_file(
-    content: str,
-    document_html: str | None = None,
-    *,
-    role_key: str = "lawyer",
-    expected_titles: list[str] | None = None,
-    expected_numbers: list[int | None] | None = None,
-) -> tuple[list[SectionReview], float | None, str | None, str | None, str, LlmDebugInfo | None]:
-    titles = expected_titles or _parse_titles(content)
-    messages = [
-        {"role": "system", "content": _SYSTEM_PROMPT},
-        {"role": "system", "content": _build_alignment_instruction(titles)},
-        {"role": "user", "content": content},
-    ]
-
-    try:
-        raw = await client.chat(messages)
-    except httpx.HTTPStatusError as exc:
-        raise
-    debug = build_debug_info(messages, raw)
-    reply = extract_reply(raw)
-    raw_items, inaccuracy, red_flags = _extract_response_payload(reply)
-    if not raw_items and titles:
-        raw_items = [{} for _ in titles]
-    reviews = _normalize_reviews(raw_items, titles, expected_numbers)
-    average_score = _calculate_average_score(reviews)
-    html_report = _build_html_report(
-        reviews,
-        average_score,
-        inaccuracy,
-        red_flags,
-        document_html,
-    )
-    return reviews, average_score, inaccuracy, red_flags, html_report, debug
+@dataclass(slots=True)
+class SectionReviewResult:
+    """Container for normalized section reviews and rendered HTML."""
+    reviews: list[SectionReview]
+    overall_score: float | None
+    inaccuracy: str | None
+    red_flags: str | None
+    html_report: str
+    debug: LlmDebugInfo | None
 
 
-__all__ = ["evaluate_section_file"]
+class SectionReviewService:
+    """Run LLM review for sections and render a concise HTML report."""
+
+    def __init__(self, llm_client: OllamaClient | None = None) -> None:
+        self._client = llm_client or client
+
+    async def evaluate_sections(
+        self,
+        content: str,
+        document_html: str | None = None,
+        *,
+        expected_titles: list[str] | None = None,
+        expected_numbers: list[int | None] | None = None,
+    ) -> SectionReviewResult:
+        """Request section-by-section feedback and collect debug/context metadata."""
+        titles = expected_titles or _parse_titles(content)
+        messages = [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "system", "content": _build_alignment_instruction(titles)},
+            {"role": "user", "content": content},
+        ]
+
+        raw = await self._client.chat(messages)
+        debug = build_debug_info(messages, raw)
+        reply = extract_reply(raw)
+        raw_items, inaccuracy, red_flags = _extract_response_payload(reply)
+        if not raw_items and titles:
+            raw_items = [{} for _ in titles]
+        reviews = _normalize_reviews(raw_items, titles, expected_numbers)
+        average_score = _calculate_average_score(reviews)
+        html_report = _build_html_report(
+            reviews,
+            average_score,
+            inaccuracy,
+            red_flags,
+            document_html,
+        )
+        return SectionReviewResult(
+            reviews=reviews,
+            overall_score=average_score,
+            inaccuracy=inaccuracy,
+            red_flags=red_flags,
+            html_report=html_report,
+            debug=debug,
+        )
+
+
+reviewer = SectionReviewService()
+
+__all__ = ["SectionReviewService", "SectionReviewResult", "reviewer"]

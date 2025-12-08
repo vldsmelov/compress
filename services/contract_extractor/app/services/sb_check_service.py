@@ -5,6 +5,7 @@ SB Check Service - анализ компаний по чек-листу
 import os
 import json
 import logging
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
@@ -550,16 +551,11 @@ class SBCheckService:
         return companies
 
 
-# ----------------- СИНГЛТОН-ДОСТУП К СЕРВИСУ -----------------
-
-_sb_check_service_instance: Optional[SBCheckService] = None
-
-
+@lru_cache()
 def get_sb_check_service(data_file_path: Optional[str] = None) -> SBCheckService:
-    """
-    Глобальный доступ к инстансу SBCheckService (ленивая инициализация).
-    """
-    global _sb_check_service_instance
-    if _sb_check_service_instance is None:
-        _sb_check_service_instance = SBCheckService(data_file_path)
-    return _sb_check_service_instance
+    """Return a cached SBCheckService instance."""
+
+    return SBCheckService(data_file_path)
+
+
+__all__ = ["CheckResult", "SBCheckService", "get_sb_check_service"]
