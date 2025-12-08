@@ -59,7 +59,7 @@ async def handle_upload(
         async with connection:
             channel = await connection.channel()
 
-            expected_services = ["ai_legal", "ai_econom", "contract_extractor", "sb_ai"]
+            expected_services = ["ai_legal", "ai_econom", "contract_extractor"]
             await _publish_message(
                 channel,
                 settings.aggregation_queue,

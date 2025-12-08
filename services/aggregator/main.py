@@ -77,7 +77,11 @@ class Aggregator:
                 return
 
             state = self._ensure_state(task_id, payload.get("reply_to") or message.reply_to)
-            state.results[service] = payload.get("payload", {})
+            body = payload.get("payload", {})
+            if service == "ai_econom" and isinstance(body, dict) and body.get("sb_triggered"):
+                state.expected.add("sb_ai")
+
+            state.results[service] = body
 
             if service in state.expected:
                 state.expected.remove(service)

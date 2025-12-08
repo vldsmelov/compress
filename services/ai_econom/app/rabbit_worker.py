@@ -5,6 +5,7 @@ import json
 import os
 
 import aio_pika
+from fastapi import HTTPException
 
 from .analysis import PurchaseAnalyzer
 from .budget_store import BudgetStore
@@ -37,8 +38,28 @@ async def handle_message(message: aio_pika.IncomingMessage) -> None:
         settings = get_settings()
         analyzer = PurchaseAnalyzer(BudgetStore(settings), LlmClient(settings))
 
-        spec_data = analyzer.parse_spec(parts)
-        result = analyzer.analyze(spec_data)
+        try:
+            spec_data = analyzer.parse_spec(parts)
+            result = analyzer.analyze(spec_data)
+        except HTTPException as exc:
+            spec_data = {}
+            result = {"error": exc.detail}
+        except Exception as exc:  # pylint: disable=broad-except
+            spec_data = {}
+            result = {"error": f"Ошибка экономического сервиса: {exc}"}
+
+        warning = spec_data.get("warning") if isinstance(spec_data, dict) else None
+        if warning and isinstance(result, dict):
+            result.setdefault("warning", warning)
+
+        if isinstance(result, dict):
+            result = {"sb_triggered": False, **result}
+        else:
+            result = {"sb_triggered": False, "result": result}
+
+        seller = parts.get("part_15") or result.get("seller")
+        if seller:
+            result["sb_triggered"] = True
 
         response = {"service": "ai_econom", "payload": result}
         await publish(
@@ -48,7 +69,6 @@ async def handle_message(message: aio_pika.IncomingMessage) -> None:
             message.reply_to,
         )
 
-        seller = parts.get("part_15") or result.get("seller")
         if seller:
             await publish(
                 os.getenv("SB_QUEUE", "sb_queue"),
