@@ -64,7 +64,10 @@ def build_chunks_from_payload(payload: str | dict[str, str]) -> tuple[list[Secti
     for key, value in data.items():
         if not isinstance(value, str):
             continue
-        entries.append((key, _extract_part_index(key), value.strip()))
+        content = value.strip()
+        if not content:
+            continue
+        entries.append((key, _extract_part_index(key), content))
 
     if not entries:
         raise HTTPException(status_code=422, detail="Не удалось найти текстовые секции в файле")

@@ -7,7 +7,7 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Dict, List
 
-from app.core.config import CONFIG
+from ..core.config import Settings, get_settings
 from .normalize import normalize_whitespace
 from .ollama_client import OllamaClient
 
@@ -21,10 +21,16 @@ class SectionQuestionAnswering:
     those keys.
     """
 
-    def __init__(self, system_prompt_path: str, user_template_path: str) -> None:
+    def __init__(
+        self,
+        system_prompt_path: str,
+        user_template_path: str,
+        settings: Settings | None = None,
+    ) -> None:
+        self.settings = settings or get_settings()
         self.system_prompt = Path(system_prompt_path).read_text(encoding="utf-8")
         self.user_template = Path(user_template_path).read_text(encoding="utf-8")
-        self.client = OllamaClient()
+        self.client = OllamaClient(self.settings)
         self.last_prompt: str = ""
         self.last_raw: str = ""
 
@@ -44,8 +50,8 @@ class SectionQuestionAnswering:
         raw = await self.client.chat(
             self.system_prompt,
             user_prompt,
-            temperature=CONFIG.temperature,
-            max_tokens=CONFIG.max_tokens,
+            temperature=self.settings.temperature,
+            max_tokens=self.settings.max_tokens,
         )
         self.last_raw = raw
 

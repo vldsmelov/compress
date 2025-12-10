@@ -4,12 +4,10 @@ import html
 import json
 import math
 import re
-import textwrap
+from dataclasses import dataclass
 from typing import Iterable
 
-import httpx
-
-from .llm import build_debug_info, client, extract_reply
+from .llm_client import build_debug_info, client, extract_reply, OllamaClient
 from .schemas import LlmDebugInfo, SectionReview
 
 _SYSTEM_PROMPT = (
@@ -25,6 +23,20 @@ _SYSTEM_PROMPT = (
     "Если раздел представлен таблицей — всё равно верни JSON с resume, risks, score."
     "Сейчас декабрь 2025 года."
 )
+
+
+def _build_alignment_instruction(titles: list[str]) -> str:
+    ordered_titles = ", ".join(titles)
+    sections_count = len(titles)
+    return (
+        "Ты должен вернуть разделы в том же порядке, что и во входных данных. "
+        f"Всего разделов (включая шапку и спецификацию) — {sections_count}. "
+        f"Порядок разделов: {ordered_titles}. "
+        "Ответ json должен содержать ключ sections с массивом ровно из этого количества элементов. "
+        "Если по разделу нет информации, всё равно заполни его: resume — 'Информации недостаточно',"
+        " risks — 'Риски не выявлены', score — '5'. "
+        "Резюме и риски должны быть максимально лаконичными (не более 2 предложений на поле)."
+    )
 
 
 def _parse_titles(source: str) -> list[str]:
@@ -133,9 +145,12 @@ def _normalize_reviews(
     for index, item in enumerate(padded_items):
         fallback_title = titles[index] if index < len(titles) else f"Раздел {index + 1}"
         title = str(item.get("title") or fallback_title)
-        resume = str(item.get("resume") or "").strip()
-        risks = str(item.get("risks") or "").strip()
-        score = str(item.get("score") or "").strip()
+        resume_raw = str(item.get("resume") or "").strip()
+        risks_raw = str(item.get("risks") or "").strip()
+        score_raw = str(item.get("score") or "").strip()
+        resume = resume_raw or "Информации недостаточно"
+        risks = risks_raw or "Риски не выявлены"
+        score = score_raw or "5"
         number = None
         if numbers and index < len(numbers):
             number = numbers[index]
@@ -306,39 +321,64 @@ def _build_html_report(
     """.strip()
 
 
-async def evaluate_section_file(
-    content: str,
-    document_html: str | None = None,
-    *,
-    role_key: str = "lawyer",
-    expected_titles: list[str] | None = None,
-    expected_numbers: list[int | None] | None = None,
-) -> tuple[list[SectionReview], float | None, str | None, str | None, str, LlmDebugInfo | None]:
-    titles = expected_titles or _parse_titles(content)
-    messages = [
-        {"role": "system", "content": _SYSTEM_PROMPT},
-        {"role": "user", "content": content},
-    ]
-
-    try:
-        raw = await client.chat(messages)
-    except httpx.HTTPStatusError as exc:
-        raise
-    debug = build_debug_info(messages, raw)
-    reply = extract_reply(raw)
-    raw_items, inaccuracy, red_flags = _extract_response_payload(reply)
-    if not raw_items and titles:
-        raw_items = [{} for _ in titles]
-    reviews = _normalize_reviews(raw_items, titles, expected_numbers)
-    average_score = _calculate_average_score(reviews)
-    html_report = _build_html_report(
-        reviews,
-        average_score,
-        inaccuracy,
-        red_flags,
-        document_html,
-    )
-    return reviews, average_score, inaccuracy, red_flags, html_report, debug
+@dataclass(slots=True)
+class SectionReviewResult:
+    """Container for normalized section reviews and rendered HTML."""
+    reviews: list[SectionReview]
+    overall_score: float | None
+    inaccuracy: str | None
+    red_flags: str | None
+    html_report: str
+    debug: LlmDebugInfo | None
 
 
-__all__ = ["evaluate_section_file"]
+class SectionReviewService:
+    """Run LLM review for sections and render a concise HTML report."""
+
+    def __init__(self, llm_client: OllamaClient | None = None) -> None:
+        self._client = llm_client or client
+
+    async def evaluate_sections(
+        self,
+        content: str,
+        document_html: str | None = None,
+        *,
+        expected_titles: list[str] | None = None,
+        expected_numbers: list[int | None] | None = None,
+    ) -> SectionReviewResult:
+        """Request section-by-section feedback and collect debug/context metadata."""
+        titles = expected_titles or _parse_titles(content)
+        messages = [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "system", "content": _build_alignment_instruction(titles)},
+            {"role": "user", "content": content},
+        ]
+
+        raw = await self._client.chat(messages)
+        debug = build_debug_info(messages, raw)
+        reply = extract_reply(raw)
+        raw_items, inaccuracy, red_flags = _extract_response_payload(reply)
+        if not raw_items and titles:
+            raw_items = [{} for _ in titles]
+        reviews = _normalize_reviews(raw_items, titles, expected_numbers)
+        average_score = _calculate_average_score(reviews)
+        html_report = _build_html_report(
+            reviews,
+            average_score,
+            inaccuracy,
+            red_flags,
+            document_html,
+        )
+        return SectionReviewResult(
+            reviews=reviews,
+            overall_score=average_score,
+            inaccuracy=inaccuracy,
+            red_flags=red_flags,
+            html_report=html_report,
+            debug=debug,
+        )
+
+
+reviewer = SectionReviewService()
+
+__all__ = ["SectionReviewService", "SectionReviewResult", "reviewer"]

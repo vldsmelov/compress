@@ -38,31 +38,10 @@ class SectionReviewResponse(BaseModel):
 
 
 class FullProcessingResponse(BaseModel):
-    docx_text: Optional[str] = Field(
-        default=None, description="Полный текст документа в формате HTML"
-    )
-    specification_text: Optional[str] = Field(
-        default=None, description="Полный текст спецификации в формате JSON"
-    )
     overall_score: Optional[float] = Field(
         default=None, description="Средняя оценка по всем разделам"
     )
-    inaccuracy: Optional[str] = Field(
-        default=None, description="Ключевые неточности по документу"
-    )
-    red_flags: Optional[str] = Field(
-        default=None, description="Серьезные ошибки по документу"
-    )
-    sections: List[SectionReview] = Field(
-        default_factory=list, description="Оценка и сводка по каждой секции"
-    )
     html: str = Field(..., description="HTML-страница со сводкой по разделам")
-    debug: Optional[LlmDebugInfo] = Field(
-        default=None, description="Отладочная информация с промптом и ответом"
-    )
-    debug_message: Optional[str] = Field(
-        default=None, description="Отладочная информация о последнем отчете"
-    )
 
 
 class HealthResponse(BaseModel):
