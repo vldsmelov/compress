@@ -13,7 +13,6 @@ from .schemas import LlmDebugInfo, SectionReview
 _SYSTEM_PROMPT = (
     "Ты юрист. Твоя задача — проанализировать шапку, каждый раздел документа и спецификацию "
     "после строки 'Инструкция'.\n\n"
-
     "Твоя работа — вернуть ОДИН JSON-объект строго следующей структуры:\n\n"
     "{\n"
     "  \"sections\": [\n"
@@ -65,7 +64,6 @@ _SYSTEM_PROMPT = (
     "- Оценивай строго только по входным данным.\n"
     "- Сейчас декабрь 2025 года.\n"
 )
-
 
 
 
@@ -144,7 +142,7 @@ def _coerce_inaccuracy(parsed: object) -> str | None:
 def _looks_like_section(item: dict) -> bool:
     return any(key in item for key in ("title", "resume", "risks", "score"))
 
-
+build_debug_info
 def _extract_response_payload(text: str) -> tuple[list[dict], str | None, str | None]:
     try:
         parsed = json.loads(text)

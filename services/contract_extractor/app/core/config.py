@@ -62,7 +62,7 @@ class Settings(BaseSettings):
         case_sensitive = False
 
     def model_post_init(self, __context: object) -> None:  # type: ignore[override]
-        if self.num_ctx is None and self.model_name.startswith("qwen3:17b"):
+        if self.num_ctx is None and self.model_name.startswith("qwen3:14b-8k"):
             object.__setattr__(self, "num_ctx", 65_536)
 
 

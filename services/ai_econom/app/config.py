@@ -38,7 +38,7 @@ class Settings(BaseSettings):
         return f"http://{self.ollama_host}:{self.ollama_port}/api/chat"
 
     def model_post_init(self, __context: object) -> None:  # type: ignore[override]
-        if self.ollama_num_ctx is None and self.ollama_model.startswith("qwen3:17b"):
+        if self.ollama_num_ctx is None and self.ollama_model.startswith("qwen3:14b-8k"):
             object.__setattr__(self, "ollama_num_ctx", 65_536)
 
 
