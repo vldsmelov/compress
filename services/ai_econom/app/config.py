@@ -10,7 +10,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     """Centralized configuration for the ai_econom service and its Ollama client."""
-    ollama_host: str = Field(default="192.168.3.63", alias="OLLAMA_HOST")
+    ollama_host: str = Field(default="ollama", alias="OLLAMA_HOST")
     ollama_port: str = Field(default="11434", alias="OLLAMA_PORT")
     ollama_model: str = Field(default="qwen3:14b-8k", alias="OLLAMA_MODEL")
     ollama_temperature: float = Field(default=0.1, alias="OLLAMA_TEMPERATURE")
