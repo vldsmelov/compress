@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     """Configuration for the AI Accountant service."""
 
     ollama_base_url: str = Field(
-        default="http://ollama:11434",
+        default="http://192.168.3.63:11434",
         alias="OLLAMA_BASE_URL",
         description="Base URL for the Ollama instance",
     )

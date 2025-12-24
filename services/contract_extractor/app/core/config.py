@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     env: str = Field(default="dev", alias="ENV")
 
     ollama_host: str = Field(
-        default="http://ollama:11434",
+        default="http://192.168.3.63:11434",
         alias="OLLAMA_HOST",
         description="Base URL of the Ollama instance",
     )

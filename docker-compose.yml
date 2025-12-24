@@ -14,29 +14,29 @@ services:
     networks:
       - app-network
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    ports:
-      - "11434:11434"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    runtime: nvidia
-    environment:
-      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
-      NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
-      OLLAMA_GPU_DRIVER: ${OLLAMA_GPU_DRIVER:-cuda}
-      CUDA_VERSION: ${CUDA_VERSION:-13}
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
-    networks:
-      - app-network
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: ollama
+  #   ports:
+  #     - "11434:11434"
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]
+  #   runtime: nvidia
+  #   environment:
+  #     NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+  #     NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
+  #     OLLAMA_GPU_DRIVER: ${OLLAMA_GPU_DRIVER:-cuda}
+  #     CUDA_VERSION: ${CUDA_VERSION:-13}
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   restart: unless-stopped
+  #   networks:
+  #     - app-network
 
   gateway:
     build:
@@ -64,7 +64,7 @@ services:
     environment:
       <<: *ollama-model
       OLLAMA_MODEL: ${OLLAMA_MODEL:-${MODEL:-qwen3:14b-8k}}
-      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_HOST: http://192.168.3.63:11434
       MODEL: ${MODEL:-${OLLAMA_MODEL:-qwen3:14b-8k}}
       TEMPERATURE: ${TEMPERATURE:-0.1}
       MAX_TOKENS: ${MAX_TOKENS:-32000}
@@ -77,7 +77,7 @@ services:
     command: python -m contract_extractor.app.rabbit_worker
     restart: unless-stopped
     depends_on:
-      - ollama
+      # - ollama
       - rabbitmq
     networks:
       - app-network
@@ -102,7 +102,7 @@ services:
     command: python -m app.rabbit_worker
     restart: unless-stopped
     depends_on:
-      - ollama
+      # - ollama
       - rabbitmq
     networks:
       - app-network
@@ -130,14 +130,14 @@ services:
     environment:
       <<: *ollama-model
       OLLAMA_MODEL: ${AI_LEGAL_MODEL:-${OLLAMA_MODEL:-qwen3:14b-8k}}
-      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_BASE_URL: http://192.168.3.63:11434
       RABBITMQ_URL: amqp://guest:guest@rabbitmq/
       AI_LEGAL_QUEUE: ai_legal_parts
       AGGREGATION_RESULTS_QUEUE: aggregation_results
     command: python -m app.rabbit_worker
     restart: unless-stopped
     depends_on:
-      - ollama
+      # - ollama
       - rabbitmq
     networks:
       - app-network
@@ -151,14 +151,14 @@ services:
     environment:
       <<: *ollama-model
       OLLAMA_MODEL: ${AI_ACCOUNTANT_MODEL:-${OLLAMA_MODEL:-qwen3:14b-8k}}
-      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_BASE_URL: http://192.168.3.63:11434
       RABBITMQ_URL: amqp://guest:guest@rabbitmq/
       AI_ACCOUNTANT_QUEUE: ai_accountant_parts
       AGGREGATION_RESULTS_QUEUE: aggregation_results
     command: python -m app.rabbit_worker
     restart: unless-stopped
     depends_on:
-      - ollama
+      # - ollama
       - rabbitmq
     networks:
       - app-network
