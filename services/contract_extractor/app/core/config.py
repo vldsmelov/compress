@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     env: str = Field(default="dev", alias="ENV")
 
     ollama_host: str = Field(
-        default="http://192.168.3.63:11434",
+        default="http://ollama:11434",
         alias="OLLAMA_HOST",
         description="Base URL of the Ollama instance",
     )
@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     max_tokens: int = Field(default=1024, alias="MAX_TOKENS")
     numeric_tolerance: float = Field(default=0.01, alias="NUMERIC_TOLERANCE")
     use_llm: bool = Field(default=True, alias="USE_LLM")
-    ollama_read_timeout: float = Field(default=300.0, alias="OLLAMA_READ_TIMEOUT")
+    ollama_read_timeout: float = Field(default=600.0, alias="OLLAMA_READ_TIMEOUT")
     supported_languages: List[str] = Field(
         default_factory=lambda: ["ru", "en"], alias="SUPPORTED_LANGUAGES"
     )
