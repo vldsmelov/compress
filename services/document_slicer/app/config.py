@@ -49,7 +49,7 @@ class Settings:
         )
     )
     http_timeout: float = field(
-        default_factory=lambda: float(os.getenv("SERVICE_HTTP_TIMEOUT", "120"))
+        default_factory=lambda: float(os.getenv("SERVICE_HTTP_TIMEOUT", "600"))
     )
     data_volume_path: Path = field(
         default_factory=lambda: Path(os.getenv("DATA_VOLUME_PATH", "/data"))

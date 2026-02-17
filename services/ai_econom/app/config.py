@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     ollama_model: str = Field(default="qwen3:14b-8k", alias="OLLAMA_MODEL")
     ollama_temperature: float = Field(default=0.1, alias="OLLAMA_TEMPERATURE")
     ollama_max_tokens: int = Field(default=2000, alias="OLLAMA_MAX_TOKENS")
-    ollama_timeout: float = Field(default=60.0, alias="OLLAMA_TIMEOUT")
+    ollama_timeout: float = Field(default=600.0, alias="OLLAMA_TIMEOUT")
     ollama_num_ctx: Optional[int] = Field(default=None, alias="OLLAMA_NUM_CTX")
 
     data_dir: Path = Field(

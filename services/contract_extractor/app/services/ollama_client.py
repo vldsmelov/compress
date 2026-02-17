@@ -128,7 +128,7 @@ class OllamaClient:
                 ) from exc
 
     async def list_models(self):
-        async with httpx.AsyncClient(base_url=self.base_url, timeout=30.0) as client:
+        async with httpx.AsyncClient(base_url=self.base_url, timeout=600.0) as client:
             try:
                 r = await client.get("/api/tags")
                 r.raise_for_status()

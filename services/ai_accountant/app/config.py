@@ -21,7 +21,7 @@ class Settings(BaseSettings):
         description="Model identifier to use for analysis",
     )
     ollama_timeout: float = Field(
-        default=120.0,
+        default=600.0,
         alias="OLLAMA_TIMEOUT",
         description="HTTP timeout in seconds for Ollama requests",
     )
